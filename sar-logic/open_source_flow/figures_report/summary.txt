@@ -1,0 +1,5 @@
+LSB: 14.062 mV
+Average conversion time: 477.9 ps
+Worst conversion time: 512.0 ps
+SNDR: 31.12 dB
+ENOB: 4.88 bits

@@ -1,0 +1,3 @@
+local_tools/
+*.deb
+scratch.csv

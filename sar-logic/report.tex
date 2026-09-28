@@ -1,0 +1,199 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{siunitx}
+\usepackage[T1]{fontenc}
+
+\title{ELEC 5705 Assignment 3\\5-Bit Asynchronous SAR Logic}
+\author{Jesse Levine \\ 101185127}
+\date{April 2026}
+
+\begin{document}
+\maketitle
+
+\section{Objective}
+The objective of this assignment is to implement and verify the SAR logic for a 5-bit asynchronous SAR ADC operating at \SI{500}{MS/s} over a \SI{450}{mV} dynamic range. Assignment 2 focused on the comparator design. For Assignment 3, the emphasis is the control loop that performs the successive-approximation process and generates the next-bit decision timing without a fixed per-bit clock.
+
+In this submission, the SAR logic is implemented and cross-checked using two open-source behavioral flows:
+\begin{itemize}
+    \item an Icarus Verilog/SystemVerilog simulation of the asynchronous controller,
+    \item an \texttt{ngspice} behavioral experiment that reproduces the same successive-approximation process inside the \texttt{ngspice} control language,
+    \item a Yosys gate-level synthesis of the SAR controller RTL.
+\end{itemize}
+In the behavioral verification flows, the comparator is modeled from the StrongARM latch transient results obtained in Assignment 2, rather than by reusing the original Cadence transistor-level implementation directly.
+
+\section{Behavioral Model}
+The ADC resolution is 5 bits, so the LSB is
+\begin{equation}
+\mathrm{LSB} = \frac{450\ \mathrm{mV}}{2^5} = 14.0625\ \mathrm{mV}.
+\end{equation}
+
+The simulated architecture consists of:
+\begin{itemize}
+    \item a 5-bit asynchronous SAR controller,
+    \item an ideal 5-bit DAC,
+    \item a StrongARM-inspired behavioral comparator,
+    \item a sinusoidal input sampled at \SI{500}{MS/s}.
+\end{itemize}
+
+The controller begins each conversion by asserting the MSB trial code. After each comparator decision becomes valid, the logic either keeps or clears the current bit and immediately applies the next lower trial bit. This emulates asynchronous operation, where progression depends on comparator resolve time rather than a global bit clock.
+
+\subsection{Comparator Model Derived from Assignment 2}
+The comparator model is based on the StrongARM latch results from Assignment 2:
+\begin{itemize}
+    \item nominal decision time: approximately \SI{124}{ps},
+    \item minimum decision time bound: \SI{60}{ps},
+    \item maximum decision time bound: \SI{250}{ps},
+    \item required minimum overdrive near $0.5$ LSB.
+\end{itemize}
+
+The behavioral delay is made overdrive-dependent so that larger $|V_{in} - V_{DAC}|$ produces a faster comparator decision, while smaller overdrive increases resolve time. This captures the key timing behavior of the StrongARM latch relevant to asynchronous SAR sequencing.
+
+\section{Simulation Setup}
+The testbench uses a near full-scale sinusoidal input centered at \SI{0.7}{V}, with a peak amplitude equal to $0.95 \times \frac{V_{FS}}{2}$. One conversion starts every \SI{2}{ns}, corresponding to the required \SI{500}{MS/s} rate.
+
+The simulation produces:
+\begin{itemize}
+    \item the internal logic timing waveforms,
+    \item the output codes for 1024 samples,
+    \item the conversion-time distribution,
+    \item an FFT-based SNDR and ENOB calculation,
+    \item a gate-level digital realization of the SAR controller.
+\end{itemize}
+
+The Icarus flow models the SAR controller directly in SystemVerilog and drives it with a StrongARM-inspired comparator module. The \texttt{ngspice} flow does not use Verilog-A; instead, it implements the same 5-bit asynchronous approximation loop behaviorally in the \texttt{ngspice} control language using the same A2-derived comparator timing assumptions. The purpose of the second flow is to verify that the reported results are not an artifact of one simulator. In addition, the controller RTL was rewritten in a synthesis-oriented form and mapped to a gate-level netlist with Yosys as a structural digital cross-check.
+
+\section{Results}
+Table~\ref{tab:summary} summarizes the key results.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+Parameter & Result \\
+\midrule
+LSB & \SI{14.062}{mV} \\
+Average conversion time & \SI{477.9}{ps} \\
+Worst-case conversion time & \SI{512.0}{ps} \\
+SNDR & \SI{31.12}{dB} \\
+ENOB & 4.88 bits \\
+\bottomrule
+\end{tabular}
+\caption{Summary of behavioral simulation results.}
+\label{tab:summary}
+\end{table}
+
+Figure~\ref{fig:timing} shows the asynchronous control behavior. The \texttt{start} pulse begins a conversion, the comparator model produces \texttt{comp\_valid} when a decision is ready, and the SAR logic updates the trial code immediately after each valid comparison. This confirms that the controller advances by comparator-ready events rather than by a fixed bit clock.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{open_source_flow/figures_report/waveform_timing.png}
+\caption{Asynchronous SAR logic timing with StrongARM-based comparator model.}
+\label{fig:timing}
+\end{figure}
+
+Figure~\ref{fig:io} compares the analog input with the DAC-equivalent output produced by the SAR code. The staircase output tracks the input with the expected 5-bit quantization levels across the \SI{450}{mV} dynamic range.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{open_source_flow/figures_report/input_output_codes.png}
+\caption{Input waveform and quantized output code behavior.}
+\label{fig:io}
+\end{figure}
+
+Figure~\ref{fig:hist} shows the total conversion-time distribution. Because the comparator delay is overdrive-dependent, the conversion time is not constant from sample to sample. This spread is expected in an asynchronous SAR ADC and is consistent with StrongARM latch behavior.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{open_source_flow/figures_report/conversion_time_histogram.png}
+\caption{Distribution of asynchronous conversion time.}
+\label{fig:hist}
+\end{figure}
+
+Figure~\ref{fig:spectrum} shows the output spectrum used to calculate SNDR and ENOB. The measured ENOB is
+\begin{equation}
+\mathrm{ENOB} = \frac{\mathrm{SNDR} - 1.76}{6.02}
+= \frac{31.12 - 1.76}{6.02} \approx 4.88\ \mathrm{bits}.
+\end{equation}
+This is close to ideal 5-bit behavior for the present behavioral model.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{open_source_flow/figures_report/output_spectrum.png}
+\caption{Output spectrum used for SNDR and ENOB calculation.}
+\label{fig:spectrum}
+\end{figure}
+
+\section{Cross-Check with ngspice}
+To compare simulation frameworks, the same assignment was also implemented in a separate \texttt{ngspice} behavioral experiment. This version uses the same sinusoidal stimulus, the same DAC transfer function, and the same StrongARM-based comparator timing model from Assignment 2. Instead of instantiating a SystemVerilog SAR controller, the successive-approximation loop is executed in the \texttt{ngspice} control language and exported as waveform and code data.
+
+Figure~\ref{fig:ngtiming} shows the \texttt{ngspice} timing trace over the same \SI{0}{ns} to \SI{6}{ns} multi-conversion window used for the Icarus waveform plot. The sequence of \texttt{start}, comparator-valid, trial code update, and end-of-conversion follows the same asynchronous logic behavior observed in the Icarus flow.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{ngspice_experiment/figures_report/waveform_timing.png}
+\caption{Behavioral asynchronous SAR timing reproduced in the \texttt{ngspice} experiment over the same \SI{0}{ns} to \SI{6}{ns} window used in the Icarus result.}
+\label{fig:ngtiming}
+\end{figure}
+
+Table~\ref{tab:compare} compares the numerical results from both open-source methods.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Metric & Icarus Verilog & ngspice & Difference \\
+\midrule
+Average conversion time & \SI{477.9}{ps} & \SI{478.6}{ps} & \SI{+0.7}{ps} \\
+Worst conversion time & \SI{512.0}{ps} & \SI{512.4}{ps} & \SI{+0.4}{ps} \\
+SNDR & \SI{31.12}{dB} & \SI{31.12}{dB} & \SI{-0.00}{dB} \\
+ENOB & 4.88 bits & 4.88 bits & 0.00 bits \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of the two open-source behavioral verification methods.}
+\label{tab:compare}
+\end{table}
+
+The agreement between the two methods is extremely close. The conversion-time difference is below \SI{1}{ps}, and SNDR/ENOB are effectively identical. This indicates that the reported Assignment 3 behavior is determined by the SAR algorithm and the A2-derived StrongARM timing model rather than by a simulator-specific implementation detail.
+
+\section{Gate-Level Synthesis Cross-Check}
+The SAR controller was also synthesized with Yosys to confirm that the digital control algorithm can be realized as a conventional gate-level circuit. This synthesis step was applied only to the controller block, not to the analog comparator or DAC. Therefore, it is a digital structural cross-check rather than a transistor-level ADC implementation.
+
+The synthesized netlist contains 79 cells in total. Table~\ref{tab:synth} summarizes the main gate and storage elements reported by Yosys.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lc}
+\toprule
+Cell type & Count \\
+\midrule
+Enabled DFF with active-low async reset & 18 \\
+Enabled DFF with active-high async reset & 1 \\
+DFF with active-low async reset & 1 \\
+AND gates & 35 \\
+OR gates & 11 \\
+NOT gates & 7 \\
+2:1 multiplexers & 5 \\
+XOR gates & 1 \\
+\bottomrule
+\end{tabular}
+\caption{Yosys synthesis result for the SAR controller gate-level netlist, with primitive names rewritten in reader-friendly form.}
+\label{tab:synth}
+\end{table}
+
+This synthesis result is useful because it shows that the same successive-approximation controller can be represented not only behaviorally but also as a concrete gate-level digital circuit. However, it does not replace the analog verification flow. The comparator timing, DAC behavior, SNDR, and ENOB results still come from the behavioral mixed-signal abstractions described earlier.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{synthesis_experiment/sar_logic_synth_preview.png}
+\caption{Structural preview of the synthesized SAR controller graph derived from the Yosys gate-level netlist.}
+\label{fig:synthpreview}
+\end{figure}
+
+\section{Conclusion}
+A 5-bit asynchronous SAR controller was implemented and verified using two open-source behavioral simulation flows and one gate-level synthesis flow. The comparator behavior was derived from the StrongARM latch designed in Assignment 2, allowing the SAR logic to be evaluated with a realistic decision-time model. Both the Icarus Verilog and \texttt{ngspice} methods produced essentially the same result, showing correct bit-cycling, asynchronous next-bit timing, and near-ideal 5-bit dynamic performance. The additional Yosys synthesis confirmed that the controller can also be mapped to a conventional digital gate-level netlist. The final reported performance is approximately \SI{31.12}{dB} SNDR and 4.88 bits ENOB, with sub-\SI{0.6}{ns} total conversion time.
+
+\end{document}

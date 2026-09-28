@@ -1,0 +1,64 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module sar_logic(start, comp, b4, b3, b2, b1, b0, done);
+    input start, comp;
+    output b4, b3, b2, b1, b0, done;
+    electrical start, comp, b4, b3, b2, b1, b0, done;
+
+    parameter real vhi = 1.0;
+    parameter real vlo = 0.0;
+    parameter real vth = 0.5;
+    parameter real trise = 10p;
+    parameter real tfall = 10p;
+    parameter real tdelay = 0;
+
+    integer active;
+    integer conversion_done;
+    integer current_code;
+    integer trial_code;
+    integer bit_idx;
+
+    analog begin
+        @(initial_step) begin
+            active = 0;
+            conversion_done = 0;
+            current_code = 0;
+            trial_code = 0;
+            bit_idx = 4;
+        end
+
+        // Start a new conversion and immediately try the MSB.
+        @(cross(V(start) - vth, +1)) begin
+            active = 1;
+            conversion_done = 0;
+            current_code = 0;
+            bit_idx = 4;
+            trial_code = 16;
+        end
+
+        // Every comparator transition is treated as a valid async decision.
+        @(cross(V(comp) - vth, +1) or cross(V(comp) - vth, -1)) begin
+            if (active) begin
+                if (V(comp) > vth)
+                    current_code = trial_code;
+
+                if (bit_idx > 0) begin
+                    bit_idx = bit_idx - 1;
+                    trial_code = current_code | (1 << bit_idx);
+                end else begin
+                    trial_code = current_code;
+                    active = 0;
+                    conversion_done = 1;
+                end
+            end
+        end
+
+        V(b4) <+ transition(((trial_code & 16) != 0) ? vhi : vlo, tdelay, trise, tfall);
+        V(b3) <+ transition(((trial_code & 8)  != 0) ? vhi : vlo, tdelay, trise, tfall);
+        V(b2) <+ transition(((trial_code & 4)  != 0) ? vhi : vlo, tdelay, trise, tfall);
+        V(b1) <+ transition(((trial_code & 2)  != 0) ? vhi : vlo, tdelay, trise, tfall);
+        V(b0) <+ transition(((trial_code & 1)  != 0) ? vhi : vlo, tdelay, trise, tfall);
+        V(done) <+ transition(conversion_done ? vhi : vlo, tdelay, trise, tfall);
+    end
+endmodule

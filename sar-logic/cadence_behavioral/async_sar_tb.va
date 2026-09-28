@@ -1,0 +1,55 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module async_sar_tb;
+    electrical vin, vdac, comp, start, b4, b3, b2, b1, b0, done;
+
+    parameter real vcm = 0.7;
+    parameter real vfs = 0.45;
+    parameter real fin = 18.06640625e6;
+    parameter real fs = 500e6;
+    parameter real amplitude_frac = 0.95;
+    parameter real vhi = 1.0;
+    parameter real trf = 10p;
+    parameter real start_width = 20p;
+
+    real period;
+    real phase;
+
+    sar_logic u_logic(
+        .start(start),
+        .comp(comp),
+        .b4(b4),
+        .b3(b3),
+        .b2(b2),
+        .b1(b1),
+        .b0(b0),
+        .done(done)
+    );
+
+    ideal_dac #(
+        .vfs(vfs),
+        .vcm(vcm)
+    ) u_dac(
+        .b4(b4),
+        .b3(b3),
+        .b2(b2),
+        .b1(b1),
+        .b0(b0),
+        .vdac(vdac)
+    );
+
+    ideal_comp u_comp(
+        .vinp(vin),
+        .vinn(vdac),
+        .comp(comp)
+    );
+
+    analog begin
+        period = 1.0 / fs;
+        phase = $abstime - floor($abstime / period) * period;
+
+        V(vin) <+ vcm + amplitude_frac * 0.5 * vfs * sin(2.0 * `M_PI * fin * $abstime);
+        V(start) <+ transition((phase < start_width) ? vhi : 0.0, 0.0, trf, trf);
+    end
+endmodule

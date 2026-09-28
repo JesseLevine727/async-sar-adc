@@ -1,0 +1,16 @@
+read_verilog -sv sar_logic_synth.sv
+hierarchy -top sar_logic_synth
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+abc -g simple
+opt_clean
+stat
+write_json sar_logic_synth.json
+write_verilog -noattr sar_logic_synth_netlist.v
+show -format dot -prefix sar_logic_synth

@@ -1,0 +1,30 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module ideal_dac(b4, b3, b2, b1, b0, vdac);
+    input b4, b3, b2, b1, b0;
+    output vdac;
+    electrical b4, b3, b2, b1, b0, vdac;
+
+    parameter real vfs = 0.45;
+    parameter real vcm = 0.7;
+    parameter real vth = 0.5;
+    parameter real trise = 10p;
+    parameter real tfall = 10p;
+    parameter real tdelay = 0;
+
+    integer code;
+    real vdac_target;
+
+    analog begin
+        code = 0;
+        if (V(b4) > vth) code = code + 16;
+        if (V(b3) > vth) code = code + 8;
+        if (V(b2) > vth) code = code + 4;
+        if (V(b1) > vth) code = code + 2;
+        if (V(b0) > vth) code = code + 1;
+
+        vdac_target = vcm - 0.5 * vfs + vfs * code / 32.0;
+        V(vdac) <+ transition(vdac_target, tdelay, trise, tfall);
+    end
+endmodule

@@ -1,0 +1,15 @@
+LSB: 14.062 mV
+Average conversion time: 478.6 ps
+Worst conversion time: 512.4 ps
+SNDR: 31.12 dB
+ENOB: 4.88 bits
+
+Comparison to Icarus flow:
+Average conversion time (Icarus): 477.9 ps
+Worst conversion time (Icarus): 512.0 ps
+SNDR (Icarus): 31.12 dB
+ENOB (Icarus): 4.88 bits
+Average conversion delta: +0.7 ps
+Worst conversion delta: +0.4 ps
+SNDR delta: -0.00 dB
+ENOB delta: -0.00 bits

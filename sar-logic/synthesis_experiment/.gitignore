@@ -1,0 +1,5 @@
+local_tools/
+*.deb
+*.json
+*.ilang
+*.log

@@ -1,0 +1,23 @@
+simulator lang=spectre
+global 0
+
+parameters vcm=0.7
+parameters vfs=0.45
+parameters fin=20M
+parameters fs=500M
+parameters ampl=0.21375
+
+ahdl_include "./sar_logic.va"
+ahdl_include "./ideal_dac.va"
+ahdl_include "./ideal_comp.va"
+
+VSTART (start 0) vsource type=pulse val0=0 val1=1 delay=100p rise=10p fall=10p width=20p period=2n
+VIN    (vin   0) vsource type=sine dc=vcm ampl=ampl freq=fin
+
+XLOGIC (start comp b4 b3 b2 b1 b0 done) sar_logic
+XDAC   (b4 b3 b2 b1 b0 vdac) ideal_dac vfs=vfs vcm=vcm
+XCMP   (vin vdac comp) ideal_comp tdelay=124p
+
+tran tran stop=200n maxstep=5p
+
+save V(vin) V(vdac) V(comp) V(start) V(b4) V(b3) V(b2) V(b1) V(b0) V(done)

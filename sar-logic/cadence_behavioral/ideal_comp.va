@@ -1,0 +1,18 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module ideal_comp(vinp, vinn, comp);
+    input vinp, vinn;
+    output comp;
+    electrical vinp, vinn, comp;
+
+    parameter real vhi = 1.0;
+    parameter real vlo = 0.0;
+    parameter real tdelay = 124p;
+    parameter real trise = 10p;
+    parameter real tfall = 10p;
+
+    analog begin
+        V(comp) <+ transition((V(vinp) >= V(vinn)) ? vhi : vlo, tdelay, trise, tfall);
+    end
+endmodule

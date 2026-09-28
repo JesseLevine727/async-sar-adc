@@ -1,0 +1,275 @@
+.title A3 ngspice behavioral asynchronous SAR experiment
+
+.control
+let nsamp = 1024
+let vfs = 0.45
+let vcm = 0.7
+let input_peak_frac = 0.95
+let input_bin = 37
+let sample_period_ps = 2000
+let t_start_width_ps = 20
+let t_cmp_nom_ps = 124
+let t_cmp_min_ps = 60
+let t_cmp_max_ps = 250
+let dv_floor_v = 1e-3
+let lsb_v = vfs / 32
+let dv_ref_v = 0.5 * lsb_v
+let pi = 3.14159265358979323846
+let wave_nsamp = 4
+let wave_points_per_sample = 12
+let wave_npts = wave_nsamp * wave_points_per_sample
+
+let sample_index = vector(nsamp)
+let vin = sample_index * 0
+let codes = sample_index * 0
+let conv_time_ps = sample_index * 0
+let vdac_output = sample_index * 0
+
+let wave_time_ps = vector(wave_npts) * 0
+let wave_start = vector(wave_npts) * 0
+let wave_comp_valid = vector(wave_npts) * 0
+let wave_comp = vector(wave_npts) * 0
+let wave_done = vector(wave_npts) * 0
+let wave_trial_code = vector(wave_npts) * 0
+let wave_final_code = vector(wave_npts) * 0
+
+let i = 0
+while i < nsamp
+    let vin_i = vcm + input_peak_frac * 0.5 * vfs * sin(2 * pi * input_bin * i / nsamp)
+    let code = 0
+    let conv = 0
+    let tcur = t_start_width_ps
+
+    if i < wave_nsamp
+        let wbase = i * wave_points_per_sample
+        let tbase = i * sample_period_ps
+
+        let wave_time_ps[wbase + 0] = tbase
+        let wave_start[wbase + 0] = 1
+        let wave_comp_valid[wbase + 0] = 0
+        let wave_comp[wbase + 0] = 0
+        let wave_done[wbase + 0] = 0
+        let wave_trial_code[wbase + 0] = 16
+        let wave_final_code[wbase + 0] = 0
+
+        let wave_time_ps[wbase + 1] = tbase + t_start_width_ps
+        let wave_start[wbase + 1] = 0
+        let wave_comp_valid[wbase + 1] = 0
+        let wave_comp[wbase + 1] = 0
+        let wave_done[wbase + 1] = 0
+        let wave_trial_code[wbase + 1] = 16
+        let wave_final_code[wbase + 1] = 0
+    end
+
+    * Bit 4
+    let trial = 16
+    let vdac = vcm - 0.5 * vfs + vfs * trial / 32
+    let overdrive = abs(vin_i - vdac)
+    if overdrive < dv_floor_v
+        let overdrive = dv_floor_v
+    end
+    let tcmp = t_cmp_nom_ps * (dv_ref_v / overdrive)
+    if tcmp < t_cmp_min_ps
+        let tcmp = t_cmp_min_ps
+    end
+    if tcmp > t_cmp_max_ps
+        let tcmp = t_cmp_max_ps
+    end
+    let conv = conv + tcmp
+    let compbit = 0
+    if vin_i >= vdac
+        let compbit = 1
+        let code = trial
+    end
+    if i < wave_nsamp
+        let wave_time_ps[wbase + 2] = tbase + tcur + tcmp
+        let wave_start[wbase + 2] = 0
+        let wave_comp_valid[wbase + 2] = 1
+        let wave_comp[wbase + 2] = compbit
+        let wave_done[wbase + 2] = 0
+        let wave_trial_code[wbase + 2] = 16
+        let wave_final_code[wbase + 2] = 0
+
+        let wave_time_ps[wbase + 3] = tbase + tcur + tcmp + 1
+        let wave_start[wbase + 3] = 0
+        let wave_comp_valid[wbase + 3] = 0
+        let wave_comp[wbase + 3] = compbit
+        let wave_done[wbase + 3] = 0
+        let wave_trial_code[wbase + 3] = code + 8
+        let wave_final_code[wbase + 3] = 0
+        let tcur = tcur + tcmp + 1
+    end
+
+    * Bit 3
+    let trial = code + 8
+    let vdac = vcm - 0.5 * vfs + vfs * trial / 32
+    let overdrive = abs(vin_i - vdac)
+    if overdrive < dv_floor_v
+        let overdrive = dv_floor_v
+    end
+    let tcmp = t_cmp_nom_ps * (dv_ref_v / overdrive)
+    if tcmp < t_cmp_min_ps
+        let tcmp = t_cmp_min_ps
+    end
+    if tcmp > t_cmp_max_ps
+        let tcmp = t_cmp_max_ps
+    end
+    let conv = conv + tcmp
+    let compbit = 0
+    if vin_i >= vdac
+        let compbit = 1
+        let code = trial
+    end
+    if i < wave_nsamp
+        let wave_time_ps[wbase + 4] = tbase + tcur + tcmp
+        let wave_start[wbase + 4] = 0
+        let wave_comp_valid[wbase + 4] = 1
+        let wave_comp[wbase + 4] = compbit
+        let wave_done[wbase + 4] = 0
+        let wave_trial_code[wbase + 4] = trial
+        let wave_final_code[wbase + 4] = 0
+
+        let wave_time_ps[wbase + 5] = tbase + tcur + tcmp + 1
+        let wave_start[wbase + 5] = 0
+        let wave_comp_valid[wbase + 5] = 0
+        let wave_comp[wbase + 5] = compbit
+        let wave_done[wbase + 5] = 0
+        let wave_trial_code[wbase + 5] = code + 4
+        let wave_final_code[wbase + 5] = 0
+        let tcur = tcur + tcmp + 1
+    end
+
+    * Bit 2
+    let trial = code + 4
+    let vdac = vcm - 0.5 * vfs + vfs * trial / 32
+    let overdrive = abs(vin_i - vdac)
+    if overdrive < dv_floor_v
+        let overdrive = dv_floor_v
+    end
+    let tcmp = t_cmp_nom_ps * (dv_ref_v / overdrive)
+    if tcmp < t_cmp_min_ps
+        let tcmp = t_cmp_min_ps
+    end
+    if tcmp > t_cmp_max_ps
+        let tcmp = t_cmp_max_ps
+    end
+    let conv = conv + tcmp
+    let compbit = 0
+    if vin_i >= vdac
+        let compbit = 1
+        let code = trial
+    end
+    if i < wave_nsamp
+        let wave_time_ps[wbase + 6] = tbase + tcur + tcmp
+        let wave_start[wbase + 6] = 0
+        let wave_comp_valid[wbase + 6] = 1
+        let wave_comp[wbase + 6] = compbit
+        let wave_done[wbase + 6] = 0
+        let wave_trial_code[wbase + 6] = trial
+        let wave_final_code[wbase + 6] = 0
+
+        let wave_time_ps[wbase + 7] = tbase + tcur + tcmp + 1
+        let wave_start[wbase + 7] = 0
+        let wave_comp_valid[wbase + 7] = 0
+        let wave_comp[wbase + 7] = compbit
+        let wave_done[wbase + 7] = 0
+        let wave_trial_code[wbase + 7] = code + 2
+        let wave_final_code[wbase + 7] = 0
+        let tcur = tcur + tcmp + 1
+    end
+
+    * Bit 1
+    let trial = code + 2
+    let vdac = vcm - 0.5 * vfs + vfs * trial / 32
+    let overdrive = abs(vin_i - vdac)
+    if overdrive < dv_floor_v
+        let overdrive = dv_floor_v
+    end
+    let tcmp = t_cmp_nom_ps * (dv_ref_v / overdrive)
+    if tcmp < t_cmp_min_ps
+        let tcmp = t_cmp_min_ps
+    end
+    if tcmp > t_cmp_max_ps
+        let tcmp = t_cmp_max_ps
+    end
+    let conv = conv + tcmp
+    let compbit = 0
+    if vin_i >= vdac
+        let compbit = 1
+        let code = trial
+    end
+    if i < wave_nsamp
+        let wave_time_ps[wbase + 8] = tbase + tcur + tcmp
+        let wave_start[wbase + 8] = 0
+        let wave_comp_valid[wbase + 8] = 1
+        let wave_comp[wbase + 8] = compbit
+        let wave_done[wbase + 8] = 0
+        let wave_trial_code[wbase + 8] = trial
+        let wave_final_code[wbase + 8] = 0
+
+        let wave_time_ps[wbase + 9] = tbase + tcur + tcmp + 1
+        let wave_start[wbase + 9] = 0
+        let wave_comp_valid[wbase + 9] = 0
+        let wave_comp[wbase + 9] = compbit
+        let wave_done[wbase + 9] = 0
+        let wave_trial_code[wbase + 9] = code + 1
+        let wave_final_code[wbase + 9] = 0
+        let tcur = tcur + tcmp + 1
+    end
+
+    * Bit 0
+    let trial = code + 1
+    let vdac = vcm - 0.5 * vfs + vfs * trial / 32
+    let overdrive = abs(vin_i - vdac)
+    if overdrive < dv_floor_v
+        let overdrive = dv_floor_v
+    end
+    let tcmp = t_cmp_nom_ps * (dv_ref_v / overdrive)
+    if tcmp < t_cmp_min_ps
+        let tcmp = t_cmp_min_ps
+    end
+    if tcmp > t_cmp_max_ps
+        let tcmp = t_cmp_max_ps
+    end
+    let conv = conv + tcmp
+    let compbit = 0
+    if vin_i >= vdac
+        let compbit = 1
+        let code = trial
+    end
+    if i < wave_nsamp
+        let wave_time_ps[wbase + 10] = tbase + tcur + tcmp
+        let wave_start[wbase + 10] = 0
+        let wave_comp_valid[wbase + 10] = 1
+        let wave_comp[wbase + 10] = compbit
+        let wave_done[wbase + 10] = 0
+        let wave_trial_code[wbase + 10] = trial
+        let wave_final_code[wbase + 10] = 0
+
+        let wave_time_ps[wbase + 11] = tbase + tcur + tcmp + 1
+        let wave_start[wbase + 11] = 0
+        let wave_comp_valid[wbase + 11] = 0
+        let wave_comp[wbase + 11] = compbit
+        let wave_done[wbase + 11] = 1
+        let wave_trial_code[wbase + 11] = code
+        let wave_final_code[wbase + 11] = code
+    end
+
+    let vin[i] = vin_i
+    let codes[i] = code
+    let conv_time_ps[i] = conv
+    let vdac_output[i] = vcm - 0.5 * vfs + vfs * code / 32
+    let i = i + 1
+end
+
+set wr_vecnames
+setscale sample_index
+wrdata ngspice_results.csv vin codes conv_time_ps vdac_output
+
+setscale wave_time_ps
+wrdata ngspice_waveform.csv wave_start wave_comp_valid wave_comp wave_done wave_trial_code wave_final_code
+
+quit
+.endc
+
+.end
