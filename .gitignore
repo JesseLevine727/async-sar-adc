@@ -11,3 +11,7 @@ local_tools/
 *.vvp
 async_sar_tb
 scratch.csv
+
+# LaTeX build intermediates
+*.aux
+*.synctex.gz

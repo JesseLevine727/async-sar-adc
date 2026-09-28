@@ -1,6 +1,6 @@
 # 5-bit Asynchronous SAR ADC
 
-![5-bit asynchronous SAR ADC architecture](figures/architecture.png)
+![5-bit asynchronous SAR ADC architecture](figures/architecture.svg)
 
 A 5-bit asynchronous successive-approximation-register (SAR) ADC, designed and
 verified end to end across the analog and digital domains: a StrongARM latch
@@ -55,7 +55,7 @@ Vin ─▶ Sample & Hold ─▶ +┐
 ```
 async-sar-adc/
 ├── figures/
-│   └── architecture.png          # block diagram (above)
+│   └── architecture.svg          # block diagram (above; TikZ source: architecture.tex)
 ├── comparator/                   # StrongARM latch design (Cadence, 45 nm)
 │   ├── report.pdf
 │   └── figures/                  # schematic, gm/ID sweeps, transient
