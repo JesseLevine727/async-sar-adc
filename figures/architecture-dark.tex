@@ -1,0 +1,62 @@
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+\definecolor{navy}{HTML}{E6EDF3}
+\definecolor{blue}{HTML}{58A6FF}
+\definecolor{light}{HTML}{21262D}
+\definecolor{greyt}{HTML}{8B949E}
+
+\begin{document}
+\begin{tikzpicture}[
+  font=\sffamily,
+  box/.style={draw=blue, line width=0.9pt, fill=light, rounded corners=3pt,
+              minimum width=2.7cm, minimum height=1.15cm, align=center,
+              text=navy, inner sep=4pt},
+  sar/.style={box, fill=blue!22!black, font=\sffamily\bfseries},
+  arr/.style={-{Latex[length=2.4mm,width=1.8mm]}, line width=0.9pt, color=navy},
+  blarr/.style={-{Latex[length=2.4mm,width=1.8mm]}, line width=1.3pt, color=blue},
+  lbl/.style={font=\sffamily\small, text=greyt},
+]
+
+  % Blocks
+  \node[box] (sh)   at (0,0)      {Sample\\\& Hold};
+  \node[box] (comp) at (3.7,0)    {StrongARM\\Comparator};
+  \node[sar] (sar)  at (7.9,0)    {Asynchronous\\SAR Logic};
+  \node[box] (dac)  at (3.7,-2.5) {5-bit DAC};
+
+  % Input
+  \draw[blarr] (-1.9,0) -- (sh.west);
+  \node[left, text=blue, font=\sffamily\itshape] at (-1.9,0.0) {$V_{in}$};
+
+  % Sample&Hold -> Comparator
+  \draw[blarr] (sh.east) -- (comp.west);
+  \node[above=1pt, text=navy] at ($(sh.east)!0.5!(comp.west)$) {$+$};
+
+  % Comparator -> SAR logic
+  \draw[arr] (comp.east) -- (sar.west);
+
+  % SAR logic -> DAC (trial code)
+  \draw[arr] (sar.south) |- (7.9,-2.5) -- (dac.east);
+  \node[lbl, above] at (6.3,-2.5) {5-bit trial code};
+
+  % DAC -> Comparator (-)
+  \draw[blarr] (dac.north) -- (comp.south);
+  \node[left=2pt, text=navy] at (3.45,-1.25) {$-$};
+
+  % Output
+  \draw[blarr] (sar.east) -- ++(1.5,0);
+  \node[right, text=blue, align=left, font=\sffamily\small] at (9.7,0) {5-bit\\code};
+
+  % start / comp-ready
+  \draw[arr, dashed] (6.2,1.35) -- (7.9,1.35);
+  \node[lbl, above] at (7.05,1.35) {start / comp-ready};
+
+  % Title + spec line
+  \node[anchor=west, text=navy, font=\sffamily\bfseries\large] at (-2.2,3.2)
+    {5-bit asynchronous SAR ADC};
+  \node[anchor=west, text=greyt, font=\sffamily\small] at (-2.2,2.55)
+    {500\,MS/s \;$\cdot$\; 450\,mV FS \;$\cdot$\; ENOB 4.88\,b \;$\cdot$\; 478\,ps/conv};
+
+\end{tikzpicture}
+\end{document}
